@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="co.company.spring.dao.EmpMapper">
+<!-- namespace는 interface에 있는 패키지.클래스명으로 꼭 맞춰줘야됨 -->
+
+
+	<!--  부서별 사원 수, 부서번호, 부서명, 사원 수 -->
+	<select id="getStateDept" resultType="map">
+		SELECT A.DEPARTMENT_ID "deptId", 
+			   B.DEPARTMENT_NAME "deptName", 
+			   COUNT(*) OVER()  "cnt" 
+		FROM EMPLOYEES A, DEPARTMENTS B
+		WHERE A.DEPARTMENT_ID = B.DEPARTMENT_ID
+		<!-- GROUP BY A.DEPARTMENT_ID, B.DEPARTMENT_NAME -->
+	</select>
+	
+	
+	<!-- 전체 레코드 건수 + 조건절 추가 -->
+	<select id="getCount2" resultType="int">
+		SELECT COUNT(*) FROM EMPLOYEES
+		  <where>
+		  	<if test="firstName != null and firstName != ''" >
+		  		upper(FIRST_NAME) like '%' || upper(#{firstName}) || '%'
+		  	</if>
+		  	<if test="departmentId != null and departmentId != ''" >
+		  		AND DEPARTMENT_ID = #{departmentId}
+		  	</if>
+		  	<!-- <if test="salary != null and salary != ''" > -->
+		  	<if test="minSalary != null" >
+		  		<![CDATA[AND salary  > #{minSalary}]]> 
+		  	</if>
+		  	<if test="maxSalary != null" >
+		  		<![CDATA[AND salary  < #{maxSalary}]]> 
+		  	</if>
+		  </where>
+	</select>
+	
+	
+		<!-- 전체 레코드 건수 -->
+	<select id="getCount1" resultType="int">
+		SELECT COUNT(*) FROM EMPLOYEES
+	</select>
+	
+	<!-- 프로시저를 이용한 사원 등록 -->
+	<insert id="insertEmpProc" statementType="CALLABLE">
+			{call INS_EMP(
+				#{firstName},
+				#{email},
+				#{jobId},
+				#{msg, mode=OUT, jdbcType=VARCHAR, javaType=string},
+				#{employeeId, mode=OUT, jdbcType=VARCHAR, javaType=string}
+			)}
+	</insert>
+
+	<!-- 단건조회  -->
+	<select id="getEmp" parameterType="emp" resultType="emp">
+		SELECT  
+				employee_id,
+				department_id,
+				salary,
+		        first_name,
+				last_name,
+				email,
+				hire_date,
+				job_id
+		FROM employees
+		WHERE employee_id = #{employeeId}
+	</select>
+	
+	
+	
+	<!--  단건삭제  -->
+	<delete id ="deleteEmp">
+		DELETE EMPLOYEES
+		where EMPLOYEE_ID=#{employeeId}
+	</delete>
+	
+	
+	
+	
+	<!--  선택 다건 삭제  -->
+	<delete id ="deleteMultiEmp">
+		DELETE EMPLOYEES
+		where EMPLOYEE_ID IN
+		<foreach item="id" collection="list"
+     			 open="(" close=")" separator="," >
+       			 #{id}
+ 		</foreach>
+	</delete>
+	
+	
+	
+	<!--  사원수정  -->
+	<update id ="updateEmp"> <!-- update는resultType이 없음 -->
+		UPDATE EMPLOYEES
+		<set>
+			<if test="lastName != null"> last_name= #{lastName} </if>
+			<if test="salary != null"  > salary= #{salary}      </if>
+		</set>
+		where EMPLOYEE_ID=#{employeeId}
+	</update>
+	
+	
+	
+	<!-- 전체조회  -->	
+	<select id="getEmpList" resultType="emp" > <!--  parameterType은 생략가능 parameterType="emp"  search의 경우 "EmpSearch"-->
+		SELECT * 
+		  FROM employees
+		  <where>
+		  	<if test="firstName != null and firstName != ''" >
+		  		upper(FIRST_NAME) like '%' || upper(#{firstName}) || '%'
+		  	</if>
+		  	<if test="departmentId != null and departmentId != ''" >
+		  		AND DEPARTMENT_ID = #{departmentId}
+		  	</if>
+		  	<!-- <if test="salary != null and salary != ''" > -->
+		  	<if test="minSalary != null" >
+		  		<![CDATA[AND salary  > #{minSalary}]]> 
+		  	</if>
+		  	<if test="maxSalary != null" >
+		  		<![CDATA[AND salary  < #{maxSalary}]]> 
+		  	</if>
+		  </where>
+	</select>
+
+
+
+	<!--  사원등록    -->
+	<insert id="insertEmp" parameterType="emp">
+	<!-- insert 시작전에selectKey -->
+	<selectKey order="BEFORE" keyProperty="employeeId"  resultType="string">
+		SELECT MAX(EMPLOYEE_ID)+1 
+		FROM EMPLOYEES
+	</selectKey>
+		INSERT INTO EMPLOYEES (	employee_id, 
+								first_name, 
+								last_name,
+								email,
+								hire_date,
+								job_id
+								)
+	 	                VALUES(
+	 	               			#{employeeId}, 
+	 	               			#{firstName},
+	 	               			#{lastName},
+	 	               			#{email},
+	 	               			#{hireDate},
+	 	               			#{jobId})
+	</insert>
+	
+	
+	
+	<!-- jobid select 목록 뿌려주기 -->
+	<select id="jobSelect" resultType="co.company.spring.dao.Jobs">
+		SELECT JOB_ID, JOB_TITLE
+		FROM JOBS
+		ORDER BY JOB_ID
+	</select>
+	
+	<!-- department_id select 목록 뿌려주기 -->
+ <select id="departSelect" resultType="co.company.spring.dao.Departments">
+		SELECT DEPARTMENT_ID, DEPARTMENT_NAME
+		FROM DEPARTMENTS
+		ORDER BY DEPARTMENT_ID
+	</select> 
+	
+</mapper>
